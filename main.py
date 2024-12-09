@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QTextEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt
-from sympy import symbols, Eq, solve
+from sympy import symbols, Eq, solve, simplify, Poly
 import re
 
 
@@ -111,6 +111,7 @@ class NonlinearEquationSolver(QWidget):
 
         self.setLayout(layout)
 
+
     def show_error_message(self, message):
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Critical)
@@ -124,14 +125,52 @@ class NonlinearEquationSolver(QWidget):
         equation_str = equation_str.replace('^', '**')
         equation_str = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', equation_str)
         return equation_str
+    
+    def calculate_discriminant(self, equation):
+    
+        equation = equation.replace(" ", "")
+        left_side, right_side = equation.split("=")
+        
+        
+        a = b = c = 0
+        
+    
+        terms = left_side.replace("-", "+-").split("+")
+        
+        for term in terms:
+            if "x^2" in term:
+            
+                coeff = term.replace("x^2", "")
+                a = int(coeff) if coeff not in ["", "+", "-"] else (1 if coeff == "" else -1)
+            elif "x" in term:
+                
+                coeff = term.replace("x", "")
+                b = int(coeff) if coeff not in ["", "+", "-"] else (1 if coeff == "" else -1)
+            elif term:  
+                c += int(term)
+        
+    
+        right_terms = right_side.replace("-", "+-").split("+")
+        
+        for term in right_terms:
+            if term: 
+                c -= int(term)
+        
+        discriminant = b**2 - 4*a*c
+        return discriminant
+    
+
 
     def solve_equation(self):
         equation_str = self.equation_input.text()
         try:
-            equation_str = self.preprocess_equation(equation_str)
+            equation_str_inp = self.preprocess_equation(equation_str)
             x = symbols('x')
-            left, right = equation_str.split('=')
+            left, right = equation_str_inp.split('=')
             equation = Eq(eval(left), eval(right))
+            if (self.calculate_discriminant(equation=equation_str) < 0):
+                self.result_text.setPlainText("Нет корней")
+                return
             solutions = solve(equation, x)
             modSolutions: list[str] = []
             for i in range(len(solutions)):
